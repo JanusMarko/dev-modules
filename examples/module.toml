@@ -1,0 +1,17 @@
+schema_version = 1
+name = "example"
+version = "0.1.0"
+description = "Example module manifest — copy into .modules/<yourname>/module.toml"
+
+# Namespaced capability strings. Consumers check these before using features.
+# By convention, capabilities are prefixed with the module's own name.
+capabilities = [
+  "example.demo",
+  "example.demo.verbose",
+]
+
+# Optional free-form config — dev-modules ignores this section. Use it only
+# if you want to advertise settings that other modules may read (rare).
+# Most modules put their real config under their own directory, not here.
+[config]
+# setting = "value"
