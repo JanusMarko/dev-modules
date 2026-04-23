@@ -18,6 +18,7 @@
   "scripts": {
     "build": "tsc -p .",
     "typecheck": "tsc -p . --noEmit",
+    "prepare": "npm run build",
     "test": "node --test dist/*.test.js"
   },
   "dependencies": {
