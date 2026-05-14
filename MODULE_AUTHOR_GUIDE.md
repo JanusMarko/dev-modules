@@ -274,6 +274,147 @@ Rules for consumers:
 - Don't call into the reader library in hot paths — cache the result
   if you call it frequently.
 
+### Worked example: integrating with another module (parley + workshop-lite)
+
+Concrete walk-through using the parley + workshop-lite module pair.
+Use this as a template for any "consumer of another module"
+integration. The pattern generalizes — substitute your own module
+names.
+
+**Scenario.** Your tool wants to opt into behavior when parley is also
+installed in the target repo — specifically, to:
+
+1. Detect at SessionStart whether the current CC session is a parley
+   member, and chain `parley resume <sid>` + `cat
+   .parley/<sid>/members/<wid>/instructions.md` into the SessionStart
+   context.
+2. Record cross-system decision pointers — when your tool's records
+   touch a parley conversation, both sides carry cross-references.
+3. Coexist cleanly when parley is absent (the Hard Rule: never break
+   a parley-less install).
+
+**1. Presence and capability checks.**
+
+From a shell hook:
+
+```bash
+if command -v parley >/dev/null 2>&1; then
+    parley unread
+fi
+```
+
+`command -v` is the simplest current-implementation check. The
+canonical-going-forward check is `is_installed("parley")` via the
+dev-modules reader (small shell wrapper around the Python lib, or a
+`dev-modules` CLI). The shell-only path stays valid as a fallback.
+
+From a Python consumer:
+
+```python
+import json
+import subprocess
+from dev_modules import has_capability
+
+if has_capability("parley", "parley.members.read"):
+    # Shell out to parley's canonical CLI surface (JSON output).
+    # Survives parley source-layout changes + doesn't require
+    # importing parley as a Python package.
+    result = subprocess.run(
+        ["parley", "members", "--session", active_sid, "--json"],
+        capture_output=True, text=True, check=False,
+    )
+    if result.returncode == 0:
+        members = json.loads(result.stdout)
+```
+
+Capability checks are stronger than presence checks for feature-gating
+— they signal that a specific feature exists, not just that the
+module is installed. The shell-out-to-canonical-CLI pattern is
+preferred over direct Python imports for cross-module integrations:
+the CLI surface is the stable contract; the package internals are not.
+
+**2. Reading the other module's `[config]`.**
+
+Each module's `[config]` table is free-form. The
+`dev_modules.load_module()` API parses the manifest and exposes
+`[config]` as a dict. Convention: a module documents which `[config]`
+keys it exposes for consumers; consumers read them by name.
+
+```python
+from dev_modules import load_module
+
+producer = load_module("some-producer-module")
+if producer:
+    journal_dir = producer.config.get("journal_dir")
+```
+
+**3. Graceful absence.**
+
+Every consumer-of-another-module call must silent-skip when the
+producer is absent:
+
+```python
+# Right
+if is_installed("parley"):
+    parley_emit_blocker(reason="compaction")
+
+# Wrong — would raise ImportError if parley not installed
+import parley.cli   # bare top-level import
+```
+
+The dev-modules reader's `is_installed()` and `has_capability()`
+return `False` (never raise) when the producer's manifest is missing
+or malformed. Consumers just need to gate their calls on the return
+value — and keep the import scoped inside the gate, so the absent
+case doesn't even load the producer code.
+
+**4. Install ordering.**
+
+Both modules must install correctly in either order
+(parley-first-then-consumer, or consumer-first-then-parley). When
+both manage hook entries in `.claude/settings.json`, each installer
+should check whether the other's marker prefix is already present
+and skip its own would-duplicate entry. The parley installer
+demonstrates this: its `_install_claude_hook` scans existing
+`SessionStart` entries for known competing markers (e.g.,
+`workshop-lite-session-context`, `dev-mgmt-session-context`) and
+skips the parley `SessionStart` append when one is found.
+PreCompact entries dual-fire — both installers' PreCompact hooks
+run independently because they serve different consumers (the
+current peer agents vs. the next agent).
+
+Document your installer's marker-scan rule in your own README so
+other modules know what name strings to use.
+
+**5. Cross-system decision pointers (URI-prefix scheme).**
+
+When a decision spans both modules' ownership slices, carry
+bidirectional pointers via a URI-prefix scheme:
+
+- workshop-lite Decision frontmatter (per
+  `LIGHTWEIGHT-DEV-MGMT-SYSTEM.md §6`) carries
+  `linked_msg_ids: ['msg-...']` pointing at parley message IDs.
+- parley `Kind.DECISION` records carry
+  `external_decision_refs: ['workshop-lite://<slug>']` pointing at
+  workshop-lite decision filenames (URI-prefix scheme; see
+  `parley decision log --external-ref` flag).
+- Both fields are advisory; cross-link validation is each module's
+  responsibility, not dev-modules'.
+
+For the full ownership-and-cross-link protocol see
+`workshop-lite/docs/design/PARLEY-DEV-MGMT-INTEGRATION.md`. For the
+multi-repo coordination convention (when agents work across
+multiple repos), see
+`workshop-lite/docs/design/multi-repo-coord.md`.
+
+**6. Test the absent case.**
+
+Add a smoke test exercising your tool with the producer module NOT
+installed. Graceful skip must work — no error output, no exit-1, no
+warnings the user can't act on. The parley + workshop-lite pair's
+4-permutation smoke matrix (parley-only / workshop-lite-only /
+both-in-either-order) is a worked example of this discipline.
+
 ### Step 6 — Document it in this repo's README
 
 Add a short section so future readers (and future you) understand
