@@ -14,7 +14,20 @@ corpus:
     - "build/**"
 
 rules:
+  # LR-3 PROMOTED advisory -> blocking for dev-modules: cos independent rerun
+  # PASS (parley:v3-org-core:cos-devmodules-lr36-promote / v3-23153) after
+  # committed teeth evidence docs/kits/lr3-lr6-teeth-check.sh @87a9326 proved
+  # green -> injected dead-path + scaffolding-token -> restored green.
+  # A19 rollback: if a false positive blocks legitimate dev-modules work, CTO
+  # drops LR-3 back to advisory pending fix and logs the rollback.
+  LR3:
+    mode: blocking
+  # LR-6 PROMOTED advisory -> blocking under the same v3-23153 independent rerun
+  # and 87a9326 teeth-check evidence. Rollback owner: CTO unless a dev-modules
+  # steward is later named; rollback action is one config edit to advisory,
+  # logged before proceeding.
   LR6:
+    mode: blocking
     sanctioned_globs:
       - "docs/.templates/*.md"
       - "docs/handoffs/archive/*.md"

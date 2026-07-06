@@ -43,7 +43,14 @@ Injected red reference: [missing target](missing-target.md).
 Injected red scaffolding token: TODO.
 EOF
 
+set +e
 "$CHECK" > "$RED"
+red_status=$?
+set -e
+if [[ "$red_status" -ne 0 && "$red_status" -ne 1 ]]; then
+  echo "expected injected red check to exit 0(advisory) or 1(blocking), got $red_status" >&2
+  exit 1
+fi
 
 python3 - "$RED" "$FIXTURE" <<'PY'
 import json
