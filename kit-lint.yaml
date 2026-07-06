@@ -12,6 +12,13 @@ corpus:
     - "node_modules/**"
     - "dist/**"
     - "build/**"
+    # Bundle-refresh managed surfaces are byte-mirrors or adapter instruction
+    # blocks from upstream Workshop-Lite/Parley. Their LR-3/LR-6 ownership
+    # stays upstream; keep dev-modules blocking lint scoped to native docs.
+    - "AGENTS.md"
+    - "CLAUDE.md"
+    - "docs/conventions/**"
+    - "docs/.templates/**"
 
 rules:
   # LR-3 PROMOTED advisory -> blocking for dev-modules: cos independent rerun

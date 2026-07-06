@@ -1,0 +1,7 @@
+# AUTO-GENERATED from workshop-lite pyproject.toml [project.dependencies]
+# at bundle-assembly time. Do not edit by hand.
+# Refresh: `python3 .claude/scripts/w4_bundle_assembler.py emit-requirements`
+
+pyyaml>=6.0
+pathspec>=0.12,<0.13
+mcp>=1.0

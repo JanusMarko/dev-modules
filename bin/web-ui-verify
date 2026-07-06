@@ -1,0 +1,257 @@
+#!/usr/bin/env python3
+"""web-ui-verify — playwright headless-load smoke for a web-UI bundle.
+
+Loads a URL in a headless Chromium and captures uncaught errors. Per
+doctrine ``docs/decisions/2026-06-07-01-playwright-headless-load-smoke-
+verification-required-for-every-web-ui-land.md`` (cohort PW), every
+web-UI LAND charter MUST include this recipe as a cert axis.
+
+Agent-class-agnostic by construction: invokable by cc / codex /
+antigravity / any subprocess shell-out. Pure python; no shell
+wrappers; no skill-prose-dependent logic.
+
+Exit codes (charter §2 Sub-fix 1 contract):
+  0 = bundle loaded cleanly (no uncaught errors)
+  1 = uncaught errors fired (errors printed to stderr, one per line)
+  2 = bundle could not be loaded OR playwright not installed
+      (diagnostic printed to stderr; install hint when applicable)
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import re
+import sys
+from pathlib import Path
+
+
+# ---------------------------------------------------------------------------
+# Venv-aware re-exec (mirrors cli.py OBS-G Part 2.2 pattern). Route bare
+# ``python3 bin/web-ui-verify`` invocations through the project ``.venv``
+# so playwright resolves. Silent no-op when already venv-resident or no
+# venv is reachable within the project boundary.
+# ---------------------------------------------------------------------------
+
+def _running_in_project_venv() -> bool:
+    """True iff the active interpreter is inside ANY venv.
+
+    Uses ``sys.prefix != sys.base_prefix`` — the canonical PEP 405 venv
+    test — instead of substring-matching ``.venv`` against
+    ``sys.executable``. The substring test is unsafe here because
+    ``.venv/bin/python`` is normally a symlink to the system python,
+    and resolving it before testing collapses out the ``.venv`` token
+    (yielding e.g. ``/usr/bin/python3.12``) — which would make the
+    re-exec function loop indefinitely after it just re-execed into
+    the venv. ``sys.prefix`` is set from ``pyvenv.cfg`` and is the
+    correct venv-membership signal.
+    """
+    return sys.prefix != sys.base_prefix
+
+
+def _find_project_venv_python(*, here: Path | None = None) -> Path | None:
+    """Return the unresolved ``.venv/bin/python`` path so the venv is detected.
+
+    DELIBERATELY does NOT call ``.resolve()`` on the candidate: Python detects
+    a venv via ``pyvenv.cfg`` adjacent to the binary, and ``.venv/bin/python``
+    is typically a symlink to the system python. Resolving the symlink yields
+    e.g. ``/usr/bin/python3.12`` — which has no adjacent ``pyvenv.cfg`` and so
+    starts outside the venv (project deps invisible). Keeping the unresolved
+    path is what makes ``os.execv`` re-enter the venv.
+    """
+    here = (here or Path(__file__).resolve())
+    for d in (here.parent, *here.parent.parents):
+        candidate = d / ".venv" / "bin" / "python"
+        if candidate.is_file():
+            return candidate
+        if (d / "pyproject.toml").is_file():
+            break
+        if (d / ".git").exists():
+            break
+        if (d / ".claude").is_dir():
+            break
+    return None
+
+
+def _maybe_reexec_via_venv() -> None:
+    if os.environ.get("WORKSHOP_LITE_SKIP_VENV_REEXEC"):
+        return
+    if _running_in_project_venv():
+        return
+    venv_python = _find_project_venv_python()
+    if venv_python is None:
+        return
+    os.execv(str(venv_python), [str(venv_python), *sys.argv])
+
+
+_maybe_reexec_via_venv()
+
+
+# ---------------------------------------------------------------------------
+# Preflight: playwright import. Exit 2 with actionable install hint per
+# charter §7 Risk #1 mitigation. Distinguishes "playwright missing" from
+# "bundle broken" (exit 2 vs exit 1).
+# ---------------------------------------------------------------------------
+
+def _emit_playwright_missing_hint() -> None:
+    project_root = Path.cwd().resolve()
+    here = Path(__file__).resolve()
+    for d in (here, *here.parents):
+        if (d / "pyproject.toml").is_file():
+            project_root = d
+            break
+    sys.stderr.write(
+        "web-ui-verify: playwright python package not installed.\n"
+        "\n"
+        "Install the workshop-lite `web-ui-verify` extra + Chromium browser:\n"
+        "\n"
+        f"    cd {project_root}\n"
+        "    python3 -m venv .venv  # if absent\n"
+        "    .venv/bin/pip install -e \".[web-ui-verify]\"\n"
+        "    .venv/bin/playwright install chromium\n"
+        "\n"
+        "Then retry: bin/web-ui-verify <url>\n"
+    )
+
+
+try:
+    from playwright.sync_api import (  # noqa: E402
+        Error as PlaywrightError,
+        TimeoutError as PlaywrightTimeoutError,
+        sync_playwright,
+    )
+except ImportError:
+    _emit_playwright_missing_hint()
+    sys.exit(2)
+
+
+_UNHANDLED_REJECTION_INIT_SCRIPT = r"""
+window.addEventListener('unhandledrejection', function (ev) {
+    var reason = ev.reason;
+    var msg;
+    try {
+        msg = (reason && reason.stack) ? reason.stack : String(reason);
+    } catch (_e) {
+        msg = '[unstringifiable rejection]';
+    }
+    // Surface via console.error so the python-side console handler picks
+    // it up alongside other console errors — single capture channel.
+    console.error('[unhandledrejection] ' + msg);
+});
+"""
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="web-ui-verify",
+        description=(
+            "Headless-Chromium load smoke. Loads <url>, captures uncaught "
+            "errors, exits 0/1/2."
+        ),
+    )
+    p.add_argument("url", help="URL to load (http:// or https://)")
+    p.add_argument(
+        "--expected-no-error",
+        action="append",
+        default=[],
+        metavar="REGEX",
+        help=(
+            "Tolerate console errors matching REGEX (Python re syntax). "
+            "Repeatable. Default: no patterns; any error fails."
+        ),
+    )
+    p.add_argument(
+        "--timeout",
+        type=float,
+        default=15.0,
+        metavar="SECONDS",
+        help="Page-load timeout in seconds (default: 15).",
+    )
+    p.add_argument(
+        "--wait-network-idle",
+        action="store_true",
+        help="Wait for network idle before checking errors (default: off).",
+    )
+    return p
+
+
+def _compile_tolerations(patterns: list[str]) -> list[re.Pattern[str]]:
+    return [re.compile(pat) for pat in patterns]
+
+
+def _is_tolerated(msg: str, tolerations: list[re.Pattern[str]]) -> bool:
+    return any(rx.search(msg) for rx in tolerations)
+
+
+def _run(args: argparse.Namespace) -> int:
+    tolerations = _compile_tolerations(args.expected_no_error)
+    errors: list[str] = []
+    load_failure: str | None = None
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        try:
+            context = browser.new_context()
+            context.add_init_script(_UNHANDLED_REJECTION_INIT_SCRIPT)
+            page = context.new_page()
+
+            def _on_console(msg) -> None:  # type: ignore[no-untyped-def]
+                if msg.type == "error":
+                    errors.append(f"[console.error] {msg.text}")
+
+            def _on_pageerror(exc) -> None:  # type: ignore[no-untyped-def]
+                errors.append(f"[pageerror] {exc}")
+
+            def _on_response(resp) -> None:  # type: ignore[no-untyped-def]
+                if resp.status >= 400:
+                    errors.append(
+                        f"[network {resp.status}] {resp.url}"
+                    )
+
+            page.on("console", _on_console)
+            page.on("pageerror", _on_pageerror)
+            page.on("response", _on_response)
+
+            try:
+                wait_until = (
+                    "networkidle" if args.wait_network_idle else "load"
+                )
+                page.goto(
+                    args.url,
+                    timeout=int(args.timeout * 1000),
+                    wait_until=wait_until,
+                )
+            except PlaywrightTimeoutError as exc:
+                load_failure = (
+                    f"timeout loading {args.url} after {args.timeout}s: {exc}"
+                )
+            except PlaywrightError as exc:
+                load_failure = f"playwright error loading {args.url}: {exc}"
+        finally:
+            browser.close()
+
+    if load_failure is not None:
+        sys.stderr.write(f"[load-failure] {load_failure}\n")
+        return 2
+
+    uncaught = [e for e in errors if not _is_tolerated(e, tolerations)]
+    if uncaught:
+        for line in uncaught:
+            sys.stderr.write(line + "\n")
+        sys.stderr.write(f"[summary] {len(uncaught)} uncaught error(s)\n")
+        return 1
+
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    try:
+        return _run(args)
+    except KeyboardInterrupt:
+        sys.stderr.write("[interrupt] aborted by signal\n")
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

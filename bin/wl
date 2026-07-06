@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# wl — Workshop Lite umbrella verb.
+#
+# Thin wrapper that forwards subcommands to the dev-mgmt CLI module. Lets
+# operators type `wl sprint-status <id>` (or any other cli.py subcommand)
+# without remembering the full module-path invocation.
+#
+# Install: symlink this into a PATH dir (e.g.
+#   `ln -s "$PWD/bin/wl" ~/.local/bin/wl`), or prepend `bin/` to PATH.
+#
+# Requires: a workshop-lite checkout with `.claude/scripts/dev-mgmt/cli.py`
+# in the *current working directory's* repo tree. The wrapper resolves
+# the repo root from its own location so it works regardless of where
+# you invoke it from.
+
+set -euo pipefail
+
+# Resolve the repo root from this script's location (follow symlinks).
+SCRIPT="$(readlink -f "$0")"
+REPO_ROOT="$(cd "$(dirname "$SCRIPT")/.." && pwd)"
+
+CLI="$REPO_ROOT/.claude/scripts/dev-mgmt/cli.py"
+if [ ! -f "$CLI" ]; then
+  echo "wl: cli.py not found at $CLI" >&2
+  exit 2
+fi
+
+PY="$REPO_ROOT/.venv/bin/python3"
+[ -x "$PY" ] || PY="python3"
+
+exec "$PY" "$CLI" "$@"

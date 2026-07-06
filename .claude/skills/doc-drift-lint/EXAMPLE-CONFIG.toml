@@ -1,0 +1,72 @@
+# Example .claude/doc-drift-lint.toml — copy to your repo's
+# .claude/doc-drift-lint.toml (NOT to .claude/skills/) and edit the rules
+# to match your repo's spec-to-code conventions.
+#
+# Charter: docs/inbox/2026-05-23-stop-stopping-priority-backlog.md item 3.
+# Module:  .claude/scripts/dev-mgmt/doc_drift_lint.py
+#
+# Opt-in: mere presence of the FILE enables the lint. Delete the file to
+# disable. Empty `[[rules]]` list is also a no-op.
+
+schema_version = 1
+
+# -----------------------------------------------------------------------------
+# Rule 1: maxai-style F-screen mapping (the F1-spec-§6 drift class)
+# -----------------------------------------------------------------------------
+#
+# - spec_glob:           which docs to scan for enumeration tags
+# - identifier_pattern:  regex; if it has a capture group, group(1) is the
+#                        tag; otherwise the entire match is the tag
+# - code_dir_template:   filesystem path; `{n}` is substituted with the tag
+# - mode (optional):     bidirectional (default) | spec_only | code_only |
+#                        report_only
+
+[[rules]]
+name = "maxai-F-screens"
+spec_glob = "docs/design/F*-spec*.md"
+identifier_pattern = '^F(\d+)\b'
+code_dir_template = "web/components/screens/F{n}/"
+mode = "bidirectional"
+
+# -----------------------------------------------------------------------------
+# Rule 2: decision-numbering report-only (D-tags in the canonical design doc)
+# -----------------------------------------------------------------------------
+#
+# Workshop-lite's own design doc enumerates D1, D2, ... decisions but those
+# don't map 1:1 to code directories. `report_only` mode skips the cross-check
+# and only flags misconfig (e.g. the glob matched zero tags).
+
+[[rules]]
+name = "decision-numbering"
+spec_glob = "docs/design/LIGHTWEIGHT-DEV-MGMT-SYSTEM.md"
+identifier_pattern = '\bD(\d+)\b'
+mode = "report_only"
+
+# -----------------------------------------------------------------------------
+# Rule 3 (commented out): spec-only mode example
+# -----------------------------------------------------------------------------
+#
+# `spec_only` means: spec is canonical. Code dirs may legitimately exist
+# without a spec entry (e.g. internal infra). Only warn when a spec tag
+# has no matching code dir.
+#
+# [[rules]]
+# name = "feature-modules"
+# spec_glob = "docs/design/features-*.md"
+# identifier_pattern = '^M(\d+)\b'
+# code_dir_template = "src/modules/M{n}/"
+# mode = "spec_only"
+
+# -----------------------------------------------------------------------------
+# Rule 4 (commented out): code-only mode example
+# -----------------------------------------------------------------------------
+#
+# `code_only` means: code is canonical. Specs are docs-catch-up. Only warn
+# when a code dir has no matching spec tag.
+#
+# [[rules]]
+# name = "api-endpoints"
+# spec_glob = "docs/api/endpoints-*.md"
+# identifier_pattern = '^E(\d+)\b'
+# code_dir_template = "src/api/E{n}/"
+# mode = "code_only"

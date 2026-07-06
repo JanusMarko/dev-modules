@@ -1,0 +1,18 @@
+schema_version = 1
+name = "parley"
+version = "0.1.0"
+description = "Multi-agent collaboration via tmux + python sidecar bridge"
+capabilities = [
+  "parley.chat.read",
+  "parley.chat.write",
+  "parley.members.read",
+  "parley.members.edit",
+  "parley.proposals.accept",
+]
+
+[config]
+active_session_ids = []
+known_competing_sessionstart_markers = [
+  "dev-mgmt-session-context",
+  "workshop-lite-session-context",
+]

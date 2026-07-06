@@ -1,0 +1,31 @@
+# workshop-lite MCP server (wl:2026-06-05-06 4th amendment bin/wl-mcp shim).
+# Added by @wl-lead via msg-1f8bea2c122b cross-repo MCP setup task.
+[mcp_servers.workshop_lite]
+command = "/home/krisd/code/dev-modules/bin/wl-mcp"
+default_tools_approval_mode = "approve"
+
+# Workshop-lite codex-host hook registrations.
+# Installed by `wl install-codex-content` (WL.29 D2).
+# PascalCase + nested-array-of-tables per codex hook config
+# soft-trap (codex-rs/config/src/hook_config.rs:32-50, sha 58573da43).
+
+[[hooks.SessionStart]]
+matcher = ""
+
+[[hooks.SessionStart.hooks]]
+type = "command"
+command = "/home/krisd/code/dev-modules/.codex/hooks/state_digest_emit.sh"
+
+[[hooks.PreCompact]]
+matcher = ""
+
+[[hooks.PreCompact.hooks]]
+type = "command"
+command = "/home/krisd/code/dev-modules/.codex/hooks/pre_compact_handoff.sh"
+
+[[hooks.Stop]]
+matcher = ""
+
+[[hooks.Stop.hooks]]
+type = "command"
+command = "/home/krisd/code/dev-modules/.codex/hooks/validate_state.sh"

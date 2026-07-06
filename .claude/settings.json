@@ -1,0 +1,52 @@
+{
+  "hooks": {
+    "PostCompact": [
+      {
+        "name": "workshop-lite-post-compact",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-compact.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "name": "workshop-lite-pre-compact",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-compact.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "name": "workshop-lite-session-context",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-context.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "name": "workshop-lite-validate-state",
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/validate-state.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+# Workshop-Lite user-scoped preferences (the general per-user mechanism;
+# Kris priority item 2). OUT-OF-BAND of Workshop §6 (config, not an
+# entity). schema_version is for forward migration.
+#
+# MODULAR, NOT A HARDCODED GLOBAL: there is intentionally NO
+# [defaults.*] table enabling any opt-in preference. abstraction_first
+# is True ONLY in Kris's user-scoped section below — other users (and
+# the absent-file / unresolved-user cases) get the built-in default
+# (False at the call sites). This is the literal point of Kris's
+# "modular, not hardcoded global".
+
+schema_version = 1
+
+# Preference #1 — the reference rider on the general mechanism.
+# Preference #2 — planning.autonomy_level (Sprint wl.15) — gates Hard
+# Rule #8 "forward-motion default under standing-autonomy delegation"
+# at the SessionStart hook reminder. "forward-motion" → reminder
+# fires; "prompt" (the absent-pref default) → silent.
+#
+# RESOLVER-ID NOTE: user-id keys must match the active ScopeResolver's
+# output. The skill-layer ParleyHumanScopeResolver returns the parley
+# human's `id` field (`@user` in this session). The lib-level
+# DefaultScopeResolver uses `WSL_PREFS_USER` env > cwd-basename
+# ("workshop-lite") > "default". Set the pref under BOTH `users.user`
+# (parley-resolver path) AND `users.kris` (env-pref path) so the
+# rider fires regardless of which resolver the consumer composes in.
+
+[users.user.planning]
+abstraction_first = true
+autonomy_level = "forward-motion"
+
+[users.kris.planning]
+abstraction_first = true
+autonomy_level = "forward-motion"

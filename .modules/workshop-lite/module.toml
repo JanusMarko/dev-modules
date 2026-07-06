@@ -1,0 +1,49 @@
+schema_version = 1
+name = "workshop-lite"
+version = "0.1.0"
+description = "Workshop's lightweight markdown dev-management substrate (sprints, decisions, issues, reviews, handoffs, conversations) — installed into parley for self-dogfooding (Sprint P5, Shape-A-mirror)."
+capabilities = [
+  "workshop-lite.skills.record-decision",
+  "workshop-lite.skills.start-sprint",
+  "workshop-lite.skills.end-sprint",
+  "workshop-lite.skills.handoff",
+  "workshop-lite.skills.record-issue",
+  "workshop-lite.skills.record-review",
+  "workshop-lite.skills.add-task",
+  "workshop-lite.skills.capture-conversation",
+  "workshop-lite.skills.whereami",
+  "workshop-lite.hooks.session-context",
+  "workshop-lite.hooks.pre-compact",
+  "workshop-lite.hooks.validate-state",
+  "workshop-lite.validator",
+  "workshop-lite.entities.decisions",
+  "workshop-lite.entities.issues",
+  "workshop-lite.entities.reviews",
+  "workshop-lite.entities.handoffs",
+  "workshop-lite.entities.conversations",
+  "workshop-lite.entities.sprints",
+  "workshop-lite.entities.tasks",
+]
+
+# Shape-A-mirror [config] (manifest spec §2a; Sprint P5). Product /
+# design entities are TARGET-LOCAL (the parley repo). Session-execution
+# entities live in the parley dev-track substrate; substrate_path is
+# the P5-resolved LITERAL (re-resolved + re-written every idempotent
+# adopt re-run — never a stale baked value).
+[config]
+docs_root            = "docs"
+decisions_dir        = "docs/decisions"
+issues_dir           = "docs/issues"
+reviews_dir          = "docs/reviews"
+sprints_active_dir   = "/home/krisd/.parley/sessions/codex-explore/dev-track/docs/sprints/active"
+sprints_archive_dir  = "/home/krisd/.parley/sessions/codex-explore/dev-track/docs/sprints/archive"
+handoffs_dir         = "/home/krisd/.parley/sessions/codex-explore/dev-track/docs/handoffs"
+conversations_dir    = "/home/krisd/.parley/sessions/codex-explore/dev-track/docs/conversations"
+templates_dir        = "/home/krisd/.parley/sessions/codex-explore/dev-track/docs/.templates"
+skill_dir            = ".claude/skills"
+hook_dir             = ".claude/hooks"
+script_dir           = ".claude/scripts/dev-mgmt"
+settings_file        = ".claude/settings.json"
+hook_marker_prefix   = "workshop-lite-"
+legacy_hook_marker_prefix = "dev-mgmt-"
+substrate_path       = "/home/krisd/.parley/sessions/codex-explore/dev-track"
