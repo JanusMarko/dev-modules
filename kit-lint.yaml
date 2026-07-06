@@ -12,10 +12,10 @@ corpus:
     - "node_modules/**"
     - "dist/**"
     - "build/**"
-    # Bundle-refresh managed directories are byte-reproducible Workshop-Lite
-    # Class-A surfaces. Root AGENTS.md/CLAUDE.md are marker-composed files and
-    # remain in corpus; only the fully managed markdown directories are held
-    # pending fleet policy ratification.
+    # Policy-backed Class-A exclusions per documentation-expert:
+    # docs/specs/2026-07-06-managed-bundle-surface-lint-policy.md.
+    # Root AGENTS.md/CLAUDE.md are marker-composed Class-B files and remain
+    # in corpus; only manifest-listed byte-reproducible directories are held.
     - "docs/conventions/**"
     - "docs/.templates/**"
 

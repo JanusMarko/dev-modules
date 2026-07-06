@@ -151,6 +151,24 @@ def _is_bin_file(p: Path) -> bool:
     return True
 
 
+# Explicit Class-A files whose canonical source path differs from the consumer
+# target path. These are managed support stubs for references in the marker-
+# composed AGENTS.md/CLAUDE.md blocks; they are stable consumer-facing
+# pointers, not copies of the full upstream design corpus.
+CLASS_A_EXPLICIT_FILES: list[tuple[str, str, str]] = [
+    (
+        "consumer-stub",
+        "docs/_workshop-lite-consumer-stubs/design/LIGHTWEIGHT-DEV-MGMT-SYSTEM.md",
+        "docs/design/LIGHTWEIGHT-DEV-MGMT-SYSTEM.md",
+    ),
+    (
+        "consumer-stub",
+        "docs/_workshop-lite-consumer-stubs/gates/.gitkeep",
+        "docs/gates/.gitkeep",
+    ),
+]
+
+
 # CLASS-A discovery spec — each entry produces (rel_path, source_path)
 # tuples via dynamic discovery. Order is deterministic via sorted().
 CLASS_A_DISCOVERY: list[tuple[str, str, bool]] = [
@@ -239,15 +257,30 @@ def discover_class_a_entries(source: Path) -> list[dict]:
     migrate incrementally while the canonical ownership resolver stays in one
     module.
     """
-    return [
+    entries = [
         {
             "kind": kind,
             "source_path": src_path,
+            "source_rel_path": rel_path,
             "rel_path": rel_path,
             "ownership": ownership_for_path(rel_path),
         }
         for kind, src_path, rel_path in discover_class_a_files(source)
     ]
+    for kind, source_rel, target_rel in CLASS_A_EXPLICIT_FILES:
+        src_path = source / source_rel
+        if not src_path.is_file():
+            continue
+        target_path = Path(target_rel)
+        entries.append({
+            "kind": kind,
+            "source_path": src_path,
+            "source_rel_path": Path(source_rel),
+            "rel_path": target_path,
+            "ownership": ownership_for_path(target_path),
+        })
+    entries.sort(key=lambda e: (e["kind"], e["rel_path"].as_posix()))
+    return entries
 
 
 # ---------------------------------------------------------------------------
