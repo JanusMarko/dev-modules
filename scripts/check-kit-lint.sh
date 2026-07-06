@@ -4,8 +4,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="kit-lint-checker-v2.1.1"
+VERSION="kit-lint-checker-v2.1.2"
 STEWARD_HOME="${KIT_LINT_STEWARD_HOME:-../documentation-expert}"
+export KIT_LINT_REGISTRY_HOME="${KIT_LINT_REGISTRY_HOME:-$STEWARD_HOME/docs/registries/org}"
 CONTRACT="$STEWARD_HOME/docs/specs/2026-07-06-kit-lint-versioned-checker-contract.md"
 CHECKER="$STEWARD_HOME/tools/kit-lint"
 
