@@ -1,0 +1,20 @@
+# kit-lint root config - Gate 4.3 advisory wiring.
+# Advisory-only for Gate 4.3; registry/index inputs stay absent until the
+# shared-registry-home residual is resolved before Gate 4.4 promotions.
+corpus:
+  include:
+    - "docs/**/*.md"
+    - "AGENTS.md"
+    - "CLAUDE.md"
+    - "README.md"
+  exclude:
+    - ".venv/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+
+rules:
+  LR6:
+    sanctioned_globs:
+      - "docs/.templates/*.md"
+      - "docs/handoffs/archive/*.md"
